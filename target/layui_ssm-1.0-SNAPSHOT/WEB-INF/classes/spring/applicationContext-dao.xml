@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:p="http://www.springframework.org/schema/p"
+
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/context
+       http://www.springframework.org/schema/context/spring-context.xsd
+       http://www.springframework.org/schema/tx
+       http://www.springframework.org/schema/tx/spring-tx.xsd
+        http://www.springframework.org/schema/aop
+       http://www.springframework.org/schema/aop/spring-aop.xsd
+">
+
+    <context:component-scan base-package="com.karl.dao"/>
+
+    <!--读取配置  -->
+    <!--  <context:property-placeholder location="classpath:properties/db.properties"/>-->
+    <!--数据源 -->
+    <bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource">
+        <property name="driverClassName" value="com.mysql.jdbc.Driver" />
+        <property name="url" value="jdbc:mysql://localhost:3306/majordb?serverTimezone=UTC&amp;?useUnicode=true&amp;characterEncoding=utf8&amp;useSSL=false" />
+        <property name="username" value="root" />
+        <property name="password" value="root" />
+    </bean>
+    <!-- 在spring容器配置一个SqlSessonFactory  mybatis-spring支持来提供的，它实现SqlSessionFactory接口-->
+    <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+        <property name="configLocation" value="classpath:mybatis/mybatis-config.xml"/>
+        <property name="dataSource" ref="dataSource"/>
+        <property name="mapperLocations" value="classpath:mybatis/mapper/*.xml"/>
+        <property name="typeAliasesPackage" value="com.karl.entity"/>
+    </bean>
+
+    <!--mybatis-spring框架会将com.kgc.dao下接口来生成一个实现类  -->
+    <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+        <property name="basePackage" value="com.karl.dao"/>
+        <property name="sqlSessionFactoryBeanName" value="sqlSessionFactory"/>
+    </bean>
+
+    <!-- sqlSessionTemplate是对sqlSession作了封装， -->
+    <!--<bean id="sqlSessionTemplate" class="org.mybatis.spring.SqlSessionTemplate">
+       &lt;!&ndash; <constructor-arg name="sqlSessionFactory" ref="sqlSessionFactory"/>&ndash;&gt;
+        <constructor-arg index="0" ref="sqlSessionFactory"/>
+    </bean>-->
+    <!-- spring提供的一个事务管理器 -->
+    <!-- 配置事务管理  aop切面类  开始事务  与提交事务 -->
+    <bean id="transactionManager"
+          class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="dataSource" />
+    </bean>
+    <!-- 事务传播特性 -->
+    <!-- 配置事务通知 定义事务的传播特性-->
+    <tx:advice id="transactionAdvice" transaction-manager="transactionManager">
+        <tx:attributes>
+         <!--   <tx:method name="save*" propagation="REQUIRED"/>
+            <tx:method name="update*" propagation="REQUIRED"/>
+            <tx:method name="delete*" propagation="REQUIRED"/>-->
+            <tx:method name="*" propagation="REQUIRED" />
+        </tx:attributes>
+    </tx:advice>
+    <!-- 配置切面 -->
+    <!--表示那些包下面那类，这些类那方法配置增加事务管理  -->
+    <aop:config>
+        <!--给业务层的每一个方法增加事务管理功能 -->
+        <aop:pointcut id="mycut" expression="execution(* com.karl.service.impl.*.*(..))" />
+        <aop:advisor pointcut-ref="mycut"   advice-ref="transactionAdvice" />
+    </aop:config>
+
+</beans>
